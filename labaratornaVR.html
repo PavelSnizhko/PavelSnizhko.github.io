@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<head>
+	<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+	<script src='three.js'></script>
+	<script src="threex-artoolkitsource.js"></script>
+	<script src="threex-artoolkitcontext.js"></script>
+	<script src="threex-arbasecontrols.js"></script>
+    <script src="threex-armarkercontrols.js"></script>
+	<script src="artoolkit.min.js"></script>
+	<script src="artoolkit.api.js"></script>
+</head>
+
+<body>
+
+
+<script>
+
+var scene, camera, renderer, arToolkitSource, arToolkitContext, firstMarkerRoot;
+
+initialize();
+animation();
+
+function initialize()
+{
+	scene = new THREE.Scene();
+	camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+	scene.add(camera);
+	renderer = new THREE.WebGLRenderer({
+		antialias : true,
+		alpha: true
+	});
+// 	renderer.setClearColor(new THREE.Color('black'), 0)
+	renderer.setSize( window.innerWidth,window.innerHeight );
+	document.body.appendChild( renderer.domElement );
+
+	const a = 0.8;
+	const  p = 2.6;
+
+	function doRevolutionOfParabola(u, v, target) {
+		let beta = v * 2 * Math.PI;
+		let x = u * Math.cos(beta);
+		let y = u * Math.sin(beta);
+		let z = Math.sqrt(2. * p * (u - a))
+
+		target.set(x, y, z)
+
+	}
+
+		const geometry = new THREE.ParametricGeometry(doRevolutionOfParabola, 50, 50);
+
+
+
+        const material = new THREE.MeshBasicMaterial({
+            color: 0x222820,
+	    side: THREE.DoubleSide,
+            wireframe: true
+            // filled: true
+        });
+
+        surface = new THREE.Mesh(geometry, material);
+
+	arToolkitSource = new THREEx.ArToolkitSource({
+		sourceType : 'webcam',
+	});
+
+	function onResize()
+	{
+		arToolkitSource.onResize()	
+		arToolkitSource.copySizeTo(renderer.domElement)	
+		if ( arToolkitContext.arController !== null )
+			arToolkitSource.copySizeTo(arToolkitContext.arController.canvas)
+	}
+
+	arToolkitSource.init(function onReady(){
+		onResize()
+	});
+	
+	window.addEventListener('resize', function(){
+		onResize()
+	});
+	
+
+	arToolkitContext = new THREEx.ArToolkitContext({
+		cameraParametersUrl: 'camera_para.dat',
+		detectionMode: 'mono'
+	});
+	
+
+	arToolkitContext.init( function onCompleted(){
+		camera.projectionMatrix.copy( arToolkitContext.getProjectionMatrix() );
+	});
+
+
+	firstMarkerRoot = new THREE.Group();
+	scene.add(firstMarkerRoot);
+	let firstMarkerControls = new THREEx.ArMarkerControls(arToolkitContext, firstMarkerRoot, {
+		type: 'pattern', patternUrl: "snapQR.patt",
+	})
+	firstMarkerRoot.add( surface );
+
+}
+
+
+function animation()
+{
+	requestAnimationFrame(animation);
+	surface.rotation.x += 0.001;
+        surface.rotation.y += 0.02;
+	if ( arToolkitSource.ready !== false )
+		arToolkitContext.update( arToolkitSource.domElement );
+	renderer.render( scene, camera );
+}
+
+</script>
+</body>
+</html>
